@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>House Price Predictor — ML Project</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --card: #161d2e;
+    --border: #1e2d47;
+    --accent: #00d4aa;
+    --accent2: #ff6b35;
+    --text: #e8f0fe;
+    --muted: #6b7fa3;
+    --gold: #f5c842;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,170,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,170,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    text-align: center;
+    margin-bottom: 50px;
+    animation: fadeDown 0.7s ease both;
+  }
+
+  .badge {
+    display: inline-block;
+    background: rgba(0,212,170,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(0,212,170,0.3);
+    border-radius: 4px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 4px 12px;
+    margin-bottom: 18px;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #e8f0fe 0%, var(--accent) 60%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+
+  /* ─── TABS ─── */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px;
+    margin-bottom: 32px;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.25s;
+  }
+
+  .tab.active {
+    background: var(--accent);
+    color: #0a0e17;
+  }
+
+  /* ─── PANELS ─── */
+  .panel { display: none; animation: fadeUp 0.4s ease both; }
+  .panel.active { display: block; }
+
+  /* ─── PREDICTOR ─── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  @media(max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .field {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    transition: border-color 0.2s;
+  }
+  .field:focus-within { border-color: var(--accent); }
+
+  .field label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .field input, .field select {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 16px;
+    color: var(--text);
+    -webkit-appearance: none;
+  }
+
+  .field select option { background: var(--card); }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .slider-row input[type=range] {
+    flex: 1;
+    accent-color: var(--accent);
+    height: 4px;
+  }
+
+  .slider-val {
+    font-size: 18px;
+    color: var(--accent);
+    font-weight: 500;
+    min-width: 36px;
+    text-align: right;
+  }
+
+  .predict-btn {
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, var(--accent), #00a882);
+    border: none;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #0a0e17;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  .predict-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,212,170,0.3);
+  }
+
+  .result-box {
+    display: none;
+    background: linear-gradient(135deg, rgba(0,212,170,0.08), rgba(255,107,53,0.06));
+    border: 1px solid rgba(0,212,170,0.3);
+    border-radius: 14px;
+    padding: 28px;
+    text-align: center;
+    margin-top: 20px;
+    animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+
+  .result-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .result-price {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 8vw, 3.8rem);
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--accent), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .result-range {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+
+  .confidence-bar-wrap {
+    margin-top: 20px;
+  }
+
+  .confidence-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .confidence-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .confidence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--gold));
+    border-radius: 99px;
+    transition: width 1s ease;
+  }
+
+  /* ─── HOW IT WORKS ─── */
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .step {
+    display: flex;
+    gap: 18px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    transition: border-color 0.2s;
+  }
+  .step:hover { border-color: var(--accent); }
+
+  .step-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: rgba(0,212,170,0.2);
+    min-width: 36px;
+    line-height: 1;
+  }
+
+  .step-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 5px;
+  }
+
+  .step-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  code {
+    background: rgba(0,212,170,0.1);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+  }
+
+  /* ─── CODE TAB ─── */
+  .code-block {
+    background: #060c18;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .code-header {
+    background: var(--surface);
+    padding: 10px 18px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .code-dots { display: flex; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #ffbd2e; }
+  .dot-g { background: #28ca41; }
+
+  pre {
+    padding: 20px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.8;
+    color: #a8c1e8;
+  }
+
+  .kw { color: #c792ea; }
+  .fn { color: #82aaff; }
+  .str { color: #c3e88d; }
+  .cm { color: #546e7a; font-style: italic; }
+  .num { color: #f78c6c; }
+
+  /* ─── INTERVIEW Q&A ─── */
+  .qa-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .qa-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .qa-item:hover { border-color: var(--accent); }
+  .qa-item.open { border-color: rgba(0,212,170,0.5); }
+
+  .qa-q {
+    padding: 16px 20px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .qa-arrow {
+    color: var(--accent);
+    font-size: 18px;
+    transition: transform 0.3s;
+    flex-shrink: 0;
+  }
+  .qa-item.open .qa-arrow { transform: rotate(45deg); }
+
+  .qa-a {
+    display: none;
+    padding: 0 20px 16px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.8;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+  .qa-item.open .qa-a { display: block; }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="badge">🎓 ML Fresher Project #1</div>
+    <h1>House Price<br>Predictor</h1>
+    <p class="subtitle">Linear Regression · Python · Scikit-learn · Interview Ready</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('predict',this)">🏠 Predict</button>
+    <button class="tab" onclick="switchTab('how',this)">⚙️ How It Works</button>
+    <button class="tab" onclick="switchTab('code',this)">💻 Code</button>
+    <button class="tab" onclick="switchTab('interview',this)">🎤 Interview Q&A</button>
+  </div>
+
+  <!-- ─── PREDICT TAB ─── -->
+  <div class="panel active" id="tab-predict">
+    <div class="grid-2">
+      <div class="field">
+        <label>📐 Area (sq ft)</label>
+        <div class="slider-row">
+          <input type="range" min="500" max="5000" step="100" value="1500" id="area" oninput="document.getElementById('areaVal').textContent=this.value">
+          <span class="slider-val" id="areaVal">1500</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>🛏 Bedrooms</label>
+        <div class="slider-row">
+          <input type="range" min="1" max="6" step="1" value="3" id="beds" oninput="document.getElementById('bedsVal').textContent=this.value">
+          <span class="slider-val" id="bedsVal">3</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>🚿 Bathrooms</label>
+        <div class="slider-row">
+          <input type="range" min="1" max="4" step="1" value="2" id="baths" oninput="document.getElementById('bathsVal').textContent=this.value">
+          <span class="slider-val" id="bathsVal">2</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>📅 House Age (years)</label>
+        <div class="slider-row">
+          <input type="range" min="0" max="50" step="1" value="10" id="age" oninput="document.getElementById('ageVal').textContent=this.value">
+          <span class="slider-val" id="ageVal">10</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>📍 Location</label>
+        <select id="location">
+          <option value="3">Urban (City Center)</option>
+          <option value="2">Suburban</option>
+          <option value="1">Rural</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>🚗 Parking Spots</label>
+        <div class="slider-row">
+          <input type="range" min="0" max="4" step="1" value="1" id="parking" oninput="document.getElementById('parkVal').textContent=this.value">
+          <span class="slider-val" id="parkVal">1</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="predict-btn" onclick="predict()">⚡ PREDICT PRICE</button>
+
+    <div class="result-box" id="resultBox">
+      <div class="result-label">Estimated Market Value</div>
+      <div class="result-price" id="resultPrice">$0</div>
+      <div class="result-range" id="resultRange">Range: $0 – $0</div>
+      <div class="confidence-bar-wrap">
+        <div class="confidence-label">
+          <span>Model Confidence</span>
+          <span id="confVal">0%</span>
+        </div>
+        <div class="confidence-bar">
+          <div class="confidence-fill" id="confFill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── HOW IT WORKS TAB ─── -->
+  <div class="panel" id="tab-how">
+    <div class="section-title">ML Pipeline</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div>
+          <div class="step-title">Data Collection & Exploration (EDA)</div>
+          <div class="step-desc">Use datasets like <code>California Housing</code> or <code>Boston Housing</code> from sklearn. Explore using <code>pandas</code> — check shape, missing values, correlations. Plot heatmaps with <code>seaborn</code>.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div>
+          <div class="step-title">Data Preprocessing</div>
+          <div class="step-desc">Handle missing values with <code>SimpleImputer</code>. Encode categorical features using <code>LabelEncoder</code> or <code>OneHotEncoder</code>. Scale features using <code>StandardScaler</code> so no feature dominates.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div>
+          <div class="step-title">Train/Test Split</div>
+          <div class="step-desc">Split data 80/20 using <code>train_test_split()</code>. This prevents overfitting and lets us evaluate on unseen data. Always set a <code>random_state</code> for reproducibility.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div>
+          <div class="step-title">Model Training — Linear Regression</div>
+          <div class="step-desc">Fit a <code>LinearRegression</code> model from sklearn. It finds the best-fit line: <code>Price = w1×Area + w2×Beds + ... + bias</code>. Minimizes Mean Squared Error using Gradient Descent internally.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">05</div>
+        <div>
+          <div class="step-title">Model Evaluation</div>
+          <div class="step-desc">Measure performance using <code>R² Score</code> (how well variance is explained), <code>MAE</code> (mean absolute error), and <code>RMSE</code>. A good R² is above 0.75. Compare with baseline (mean predictor).</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">06</div>
+        <div>
+          <div class="step-title">Improvements (Bonus Points!)</div>
+          <div class="step-desc">Try <code>Ridge</code>/<code>Lasso</code> regression to prevent overfitting. Use <code>RandomForestRegressor</code> for better accuracy. Add <code>cross_val_score()</code> for k-fold validation. Save model with <code>joblib</code>.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── CODE TAB ─── -->
+  <div class="panel" id="tab-code">
+    <div class="section-title">Python Code</div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots">
+          <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+        </div>
+        <span>house_price_predictor.py</span>
+      </div>
+      <pre><span class="cm"># ─────────────────────────────────────────
+# House Price Prediction — ML Fresher Project
+# Model: Linear Regression | sklearn
+# ─────────────────────────────────────────</span>
+
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">import</span> matplotlib.pyplot <span class="kw">as</span> plt
+<span class="kw">import</span> seaborn <span class="kw">as</span> sns
+<span class="kw">from</span> sklearn.datasets <span class="kw">import</span> fetch_california_housing
+<span class="kw">from</span> sklearn.model_selection <span class="kw">import</span> train_test_split
+<span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> StandardScaler
+<span class="kw">from</span> sklearn.linear_model <span class="kw">import</span> LinearRegression, Ridge
+<span class="kw">from</span> sklearn.metrics <span class="kw">import</span> mean_absolute_error, r2_score, mean_squared_error
+<span class="kw">import</span> joblib
+
+<span class="cm"># ─── 1. LOAD DATA ───</span>
+data = fetch_california_housing(as_frame=<span class="kw">True</span>)
+df = data.frame
+<span class="fn">print</span>(df.head())
+<span class="fn">print</span>(df.describe())
+<span class="fn">print</span>(<span class="str">"Missing values:"</span>, df.isnull().sum().sum())
+
+<span class="cm"># ─── 2. EDA ───</span>
+plt.figure(figsize=(<span class="num">10</span>,<span class="num">8</span>))
+sns.heatmap(df.corr(), annot=<span class="kw">True</span>, cmap=<span class="str">'coolwarm'</span>, fmt=<span class="str">'.2f'</span>)
+plt.title(<span class="str">'Feature Correlation Heatmap'</span>)
+plt.tight_layout()
+plt.savefig(<span class="str">'correlation.png'</span>)
+
+<span class="cm"># ─── 3. FEATURES & TARGET ───</span>
+X = df.drop(<span class="str">'MedHouseVal'</span>, axis=<span class="num">1</span>)
+y = df[<span class="str">'MedHouseVal'</span>]
+
+<span class="cm"># ─── 4. TRAIN-TEST SPLIT ───</span>
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=<span class="num">0.2</span>, random_state=<span class="num">42</span>
+)
+<span class="fn">print</span>(<span class="str">f"Train: {X_train.shape}, Test: {X_test.shape}"</span>)
+
+<span class="cm"># ─── 5. FEATURE SCALING ───</span>
+scaler = StandardScaler()
+X_train_sc = scaler.fit_transform(X_train)
+X_test_sc  = scaler.transform(X_test)  <span class="cm"># only transform, don't fit!</span>
+
+<span class="cm"># ─── 6. TRAIN MODEL ───</span>
+model = LinearRegression()
+model.fit(X_train_sc, y_train)
+
+<span class="cm"># ─── 7. EVALUATE ───</span>
+y_pred = model.predict(X_test_sc)
+
+mae  = mean_absolute_error(y_test, y_pred)
+rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+r2   = r2_score(y_test, y_pred)
+
+<span class="fn">print</span>(<span class="str">f"\n📊 MODEL PERFORMANCE"</span>)
+<span class="fn">print</span>(<span class="str">f"MAE  : {mae:.4f}"</span>)
+<span class="fn">print</span>(<span class="str">f"RMSE : {rmse:.4f}"</span>)
+<span class="fn">print</span>(<span class="str">f"R²   : {r2:.4f}"</span>)
+
+<span class="cm"># ─── 8. VISUALIZE PREDICTIONS ───</span>
+plt.figure(figsize=(<span class="num">8</span>,<span class="num">6</span>))
+plt.scatter(y_test, y_pred, alpha=<span class="num">0.3</span>, color=<span class="str">'#00d4aa'</span>)
+plt.plot([y_test.min(), y_test.max()],
+         [y_test.min(), y_test.max()], <span class="str">'r--'</span>, lw=<span class="num">2</span>)
+plt.xlabel(<span class="str">'Actual Price'</span>)
+plt.ylabel(<span class="str">'Predicted Price'</span>)
+plt.title(<span class="str">'Actual vs Predicted House Prices'</span>)
+plt.tight_layout()
+plt.savefig(<span class="str">'predictions.png'</span>)
+
+<span class="cm"># ─── 9. SAVE MODEL ───</span>
+joblib.dump(model, <span class="str">'house_model.pkl'</span>)
+joblib.dump(scaler, <span class="str">'scaler.pkl'</span>)
+<span class="fn">print</span>(<span class="str">"\n✅ Model saved!"</span>)
+
+<span class="cm"># ─── 10. PREDICT NEW HOUSE ───</span>
+new_house = np.array([[<span class="num">8.3</span>, <span class="num">41</span>, <span class="num">6.98</span>, <span class="num">1.02</span>, <span class="num">322</span>, <span class="num">2.56</span>, <span class="num">37.88</span>, <span class="num">-122.23</span>]])
+new_scaled = scaler.transform(new_house)
+price = model.predict(new_scaled)
+<span class="fn">print</span>(<span class="str">f"\n🏠 Predicted price: ${price[<span class="num">0</span>]*100000:.0f}"</span>)</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots">
+          <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+        </div>
+        <span>requirements.txt</span>
+      </div>
+      <pre>scikit-learn>=1.3.0
+pandas>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+joblib>=1.3.0</pre>
+    </div>
+  </div>
+
+  <!-- ─── INTERVIEW Q&A TAB ─── -->
+  <div class="panel" id="tab-interview">
+    <div class="section-title">Top Interview Questions</div>
+    <div class="qa-list">
+
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">What is Linear Regression? <span class="qa-arrow">+</span></div>
+        <div class="qa-a">Linear Regression finds the best-fit line through data by minimizing the sum of squared errors. For price prediction: Price = w1×Area + w2×Bedrooms + ... + bias. It assumes a linear relationship between features and target.</div>
+      </div>
+
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">Why do we need to scale features? <span class="qa-arrow">+</span></div>
+        <div class="qa-a">Features like Area (1000s) and Bedrooms (1–5) have very different scales. Without scaling, models give more weight to larger-scale features. StandardScaler transforms data to zero mean and unit variance: z = (x − μ) / σ.</div>
+      </div>
+
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">What is R² Score? How do you interpret it? <span class="qa-arrow">+</span></div>
+        <div class="qa-a">R² (R-squared) measures how much variance in the target is explained by the model. R²=1.0 means perfect prediction. R²=0 means the model is as good as predicting the mean. R²>0.75 is generally considered a good model for regression.</div>
+      </div>
+
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">What is overfitting? How do you prevent it? <span class="qa-arrow">+</span></div>
+        <div class="qa-a">Overfitting is when a model memorizes training data but performs poorly on new data (high train accuracy, low test accuracy). Prevention: use Ridge/Lasso regularization, cross-validation, dropout (for neural nets), or reduce model complexity.</div>
+      </div>
+
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">What is the difference between MAE and RMSE? <span class="qa-arrow">+</span></div>
+        <div class="qa-a">MAE (Mean Absolute Error) is the average of absolute differences — robust to outliers. RMSE (Root Mean Squared Error) penalizes large errors more due to squaring. Use RMSE when large errors are especially bad; use MAE when all errors matter equally.</div>
+      </div>
+
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">Why do we do train-test split? <span class="qa-arrow">+</span></div>
+        <div class="qa-a">To simulate real-world performance on unseen data. If we train and evaluate on the same data, the model could memorize it and appear perfect. Standard split is 80% train, 20% test. For smaller datasets, use k-fold cross-validation instead.</div>
+      </div>
+
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">How would you improve this model? <span class="qa-arrow">+</span></div>
+        <div class="qa-a">Great answer: (1) Try Random Forest or XGBoost for nonlinear patterns. (2) Feature engineering — add ratio features like price per sq ft. (3) Handle outliers in training data. (4) Use cross-validation instead of a single split. (5) Hyperparameter tuning with GridSearchCV.</div>
+      </div>
+
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">What is the difference between supervised and unsupervised learning? <span class="qa-arrow">+</span></div>
+        <div class="qa-a">Supervised learning uses labeled data (input + correct output) — e.g., house price prediction, spam detection. Unsupervised learning finds hidden patterns in unlabeled data — e.g., customer segmentation with K-Means, dimensionality reduction with PCA.</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function switchTab(id, btn) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + id).classList.add('active');
+  }
+
+  function predict() {
+    const area    = +document.getElementById('area').value;
+    const beds    = +document.getElementById('beds').value;
+    const baths   = +document.getElementById('baths').value;
+    const age     = +document.getElementById('age').value;
+    const loc     = +document.getElementById('location').value;
+    const parking = +document.getElementById('parking').value;
+
+    // Simple linear model (illustrative weights)
+    const base = 50000;
+    const price = base
+      + area    * 95
+      + beds    * 12000
+      + baths   * 18000
+      - age     * 1200
+      + loc     * 30000
+      + parking * 8000
+      + (Math.random() * 10000 - 5000); // small noise
+
+    const lo = Math.round(price * 0.92);
+    const hi = Math.round(price * 1.08);
+    const conf = Math.min(92, 70 + beds * 2 + (area > 1000 ? 5 : 0));
+
+    const fmt = n => '$' + Math.round(n).toLocaleString();
+
+    document.getElementById('resultPrice').textContent = fmt(price);
+    document.getElementById('resultRange').textContent = `Range: ${fmt(lo)} – ${fmt(hi)}`;
+    document.getElementById('confVal').textContent = conf + '%';
+    document.getElementById('confFill').style.width = conf + '%';
+
+    const box = document.getElementById('resultBox');
+    box.style.display = 'block';
+    box.style.animation = 'none';
+    requestAnimationFrame(() => {
+      box.style.animation = 'popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both';
+    });
+  }
+
+  function toggleQA(el) {
+    el.classList.toggle('open');
+  }
+</script>
+</body>
+</html>
